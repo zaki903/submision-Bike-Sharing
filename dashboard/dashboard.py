@@ -6,6 +6,7 @@ sns.set(style='dark')
 
 def create_weather_effect_df(df):
     weather_effect_df = df.groupby('weathersit')['cnt'].sum().reset_index()
+    
     return weather_effect_df
 
 def create_holiday_effect_df(df):
@@ -13,7 +14,7 @@ def create_holiday_effect_df(df):
         "date": "max",
         "cnt": "sum",
     })
-    holiday_effect_df = df.groupby('holiday')['cnt'].mean().reset_index()
+    holiday_effect_df = df.groupby('holiday')['cnt'].sum().reset_index()
     return holiday_effect_df
 
 def create_yearly_trend_df(df):
@@ -27,6 +28,10 @@ def convert_normalized_columns(df):
     df['hum'] = df['hum'] * 100  # Maksimum kelembaban = 100%
     df['windspeed'] = df['windspeed'] * 67  # Maksimum kecepatan angin = 67
     return df
+
+def create_temp_effect_df(df):
+    temperature_effect_df = df.groupby('temp')['cnt'].sum().reset_index()
+    return temperature_effect_df
 
 def create_monthly_rentals_df(df):
     monthly_rentals_df = df.resample(rule='M', on='date').agg({
@@ -45,7 +50,7 @@ def create_monthly_rentals_df(df):
 
 all_df = pd.read_csv("all_data.csv")
 
-df = convert_normalized_columns(all_df)
+df = all_df
 
 datetime_columns = ["date"]
 all_df.sort_values(by="date", inplace=True)
@@ -74,6 +79,7 @@ holiday_effect_df = create_holiday_effect_df(df)
 weather_effect_df = create_weather_effect_df(df)
 yearly_trend_df = create_yearly_trend_df(df)
 monthly_rentals_df = create_monthly_rentals_df(df)
+temperature_effect_df = create_temp_effect_df(df)
 
 # **1. Visualisasi Pengaruh Hari Libur terhadap Penggunaan Sepeda**
 st.title("Bike Sharing Data Visualization :sparkles:")
@@ -85,64 +91,103 @@ ax.set_xticklabels(['Not On Holiday', 'Holiday'])
 ax.set_xlabel("Day Type")
 ax.set_ylabel("Average Bike Usage")
 ax.set_title("Impact of Holiday on Bike Usage")
-holiday_count = all_df.groupby('holiday')['cnt'].mean()
-for i, v in enumerate(holiday_count.values):
-    plt.text(i, v + 1, f"{v:.0f}", ha='center', va='bottom', fontsize=12)
-st.pyplot(fig)
-
-
-# **2. Visualisasi Pengaruh Cuaca**
-st.subheader("Total Bike Rentals by Weathersit")
-weathersit_colors = {
-    'Clear': 'lightskyblue',
-    'Cloudy': 'lightgreen',
-    'Light Snow/Rain': 'gold',
-    'Heavy Rain/Ice Pallets': 'lightcoral'
-}
-
-fig, ax = plt.subplots(figsize=(8, 6))
-sns.barplot(x=weather_effect_df['weathersit'], y=weather_effect_df['cnt'], palette=weathersit_colors, ax=ax)
-ax.set_xlabel("Weathersit")
-ax.set_ylabel("Total Rentals")
-ax.set_title("Total Bike Rentals by Weathersit")
-ax.set_xticklabels(ax.get_xticklabels())
-weathersit_count =  all_df.groupby('weathersit').cnt.sum()
-sizes = weathersit_count.values
+holiday_count =  all_df.groupby('holiday').cnt.sum()
+sizes = holiday_count.values
 for i, value in enumerate(sizes):
     plt.text(i, value + 500, str(value), ha='center', va='bottom')
-plt.tight_layout()
-
 st.pyplot(fig)
 
 
+# 2.Visualisasi Pengaruh Cuaca
+st.subheader("Total Bike Rentals by Condition")
+
+options = ["Weather", "Temperature", "Hum", "Windspeed"]
+
+selected_options = st.selectbox("Choose Condition", options)
+
+if selected_options == "Weather":
+    st.subheader("Total Bike Rentals by Weathersit")
+    weathersit_colors = {
+        'Clear': 'lightskyblue',
+        'Cloudy': 'lightgreen',
+        'Light Snow/Rain': 'gold',
+        'Heavy Rain/Ice Pallets': 'lightcoral'
+    }
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.barplot(x=weather_effect_df['weathersit'], y=weather_effect_df['cnt'], palette=weathersit_colors, ax=ax)
+    ax.set_xlabel("Weathersit")
+    ax.set_ylabel("Total Rentals")
+    ax.set_title("Total Bike Rentals by Weathersit")
+    ax.set_xticklabels(ax.get_xticklabels())
+    weathersit_count =  all_df.groupby('weathersit').cnt.sum()
+    sizes = weathersit_count.values
+    for i, value in enumerate(sizes):
+        plt.text(i, value + 500, str(value), ha='center', va='bottom')
+    plt.tight_layout()
+    st.pyplot(fig)
+elif selected_options == "Temperature":
+    st.subheader("Total Bike Rentals by Temperature")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x="temp", y="cnt", data=all_df, alpha=0.7, color="blue")
+    ax.set_xlabel("Temperature (Normalized)")
+    ax.set_ylabel("Count of Bike Users")
+    ax.set_title("Temperature vs Bike Usage")
+    ax.set_xticklabels(ax.get_xticklabels())
+    st.pyplot(fig)
+elif selected_options == "Hum":
+    st.subheader("Total Bike Rentals by Hum")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x="hum", y="cnt", data=all_df, alpha=0.7, color="green")
+    ax.set_xlabel("Humidity (%)")
+    ax.set_ylabel("Count of Bike Users")
+    ax.set_title("Humidity vs Bike Usag")
+    st.pyplot(fig)
+elif selected_options == "Windspeed":
+    st.subheader("Total Bike Rentals by Windspeed")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x="windspeed", y="cnt", data=all_df, alpha=0.7, color="red")
+    ax.set_xlabel("Windspeed")
+    ax.set_ylabel("Count of Bike Users")
+    ax.set_title("Windspeed vs Bike Usage")
+    st.pyplot(fig)
+
 # **3. Tren Penggunaan Sepeda dari Tahun ke Tahun**
-st.subheader("Tren Penggunaan Sepeda per Tahun")
+st.subheader("Bike Usage Trends per Year")
 
 col1, col2, = st.columns(2)
 with col1:
     total_orders = yearly_trend_df['total_rentals'].min()
-    st.metric("Tahun 2011", value=total_orders)
+    st.metric("In 2011", value=total_orders)
 
 with col2:
     total_revenue = yearly_trend_df['total_rentals'].max()
-    st.metric("Tahun 2012", value=total_revenue)
+    st.metric("In 2012", value=total_revenue)
 
 fig, ax = plt.subplots(figsize=(8, 5))
 sns.lineplot(x=yearly_trend_df['year'], y=yearly_trend_df['total_rentals'], marker="o", linewidth=2, color='blue', ax=ax)
-ax.set_xlabel("Tahun")
-ax.set_ylabel("Total Penyewaan Sepeda")
-ax.set_title("Tren Penggunaan Sepeda dari Tahun ke Tahun")
+ax.set_xlabel("Year")
+ax.set_ylabel("Total Bike Rental")
+ax.set_title("Bike Usage Trends from Year to Year")
 
-st.subheader("Tren Penggunaan Sepeda per Bulan")
 monthly_rentals_df = create_monthly_rentals_df(df)
 
-selected_year = st.selectbox("Pilih Tahun", df['year'].unique())
-filtered_monthly_df = monthly_rentals_df[monthly_rentals_df['date'].dt.year == int(selected_year)]
+# Dropdown pilihan tahun dengan opsi 'All Years'
+year_options = ['All Years'] + list(df['year'].unique())
+selected_year = st.selectbox("Choose Year", year_options)
 
+# Filter data berdasarkan tahun yang dipilih
+if selected_year == "All Years":
+    filtered_monthly_df = monthly_rentals_df
+else:
+    filtered_monthly_df = monthly_rentals_df[monthly_rentals_df['date'].dt.year == int(selected_year)]
+
+# Plot
 fig, ax = plt.subplots(figsize=(10, 5))
 sns.lineplot(x=filtered_monthly_df['date'], y=filtered_monthly_df['total_rentals'], marker="o", linewidth=2, color='green', ax=ax)
-ax.set_xlabel("Bulan")
-ax.set_ylabel("Total Penyewaan Sepeda")
-ax.set_title(f"Tren Penggunaan Sepeda Bulanan ({selected_year})")
+
+ax.set_xlabel("Month")
+ax.set_ylabel("Total Bike Rentals")
+ax.set_title(f"Monthly Trend of Bike Rentals ({selected_year})")
 
 st.pyplot(fig)
