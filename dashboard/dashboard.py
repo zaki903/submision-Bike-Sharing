@@ -63,7 +63,7 @@ def create_yearly_rentals_df(df):
     
     return monthly_rentals_df
 
-all_df = pd.read_csv("all_data.csv")
+all_df = pd.read_csv("https://raw.githubusercontent.com/zaki903/submision-Bike-Sharing/refs/heads/main/dashboard/all_data.csv")
 
 df = all_df
 
